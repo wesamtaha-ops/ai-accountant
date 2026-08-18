@@ -4,7 +4,7 @@
 
 **جيميناي يقرأ ويشرح. المحرك المحاسبي في الخادم هو المسؤول الوحيد عن الأرقام.**
 
-## التشغيل
+## التشغيل المحلي للتطوير
 
 ```bash
 npm install
@@ -36,6 +36,48 @@ npm run dev
 حساب تجريبي: `admin@jaafar.local` / `admin123`
 
 النماذج التجريبية للفواتير تعمل بدون مفتاح. قراءة صورة أو PDF حقيقي تحتاج Gemini.
+
+## التشغيل بالإنتاج عبر Docker
+
+انسخ ملف البيئة ثم املأ كلمة مرور قاعدة البيانات ومفتاح Gemini:
+
+```bash
+cp .env.example .env
+```
+
+للبناء والتشغيل:
+
+```bash
+docker compose up -d --build
+```
+
+أو:
+
+```bash
+npm run docker:up
+```
+
+- التطبيق: http://localhost
+- الصحة: http://localhost/api/health
+- سيناريو اللجنة: http://localhost/demo
+
+لتعبئة البيانات التجريبية مرة واحدة (تمسح البيانات الحالية):
+
+```bash
+# في .env مؤقتاً: SEED_ON_START=true ثم أعد تشغيل الخادم
+# أو نفّذ:
+npm run docker:seed
+```
+
+بعد أول تعبئة أعد `SEED_ON_START=false`.
+
+لإيقاف الحاويات:
+
+```bash
+npm run docker:down
+```
+
+قاعدة البيانات وملفات الفواتير المرفوعة تُحفظ في volumes: `jaafar_pgdata` و `jaafar_uploads`. لا تُنشر منافذ Postgres أو الـ API مباشرة؛ الواجهة على المنفذ 80 توصل `/api` و `/uploads` إلى الخادم.
 
 ## سيناريو العرض أمام اللجنة
 

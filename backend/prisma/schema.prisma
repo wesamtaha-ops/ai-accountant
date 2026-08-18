@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceType {
+  SALE
+  PURCHASE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  PARTIAL
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+enum InvoiceSource {
+  MANUAL
+  OCR
+}
+
+enum AuditIssueType {
+  CALCULATION_ERROR
+  PRICE_DEVIATION
+  DUPLICATE
+  OTHER
+}
+
+enum AuditSeverity {
+  ERROR
+  WARNING
+  INFO
+}
+
+enum StockMovementType {
+  IN
+  OUT
+}
+
+enum CashMovementType {
+  RECEIPT
+  PAYMENT
+}
+
+enum InsightImportance {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Setting {
+  id                    String  @id @default(cuid())
+  companyName           String
+  currency              String  @default("EUR")
+  priceTolerancePercent Decimal @db.Decimal(5, 2)
+  defaultTaxPercent     Decimal @db.Decimal(5, 2)
+  openingCashBalance    Decimal @db.Decimal(12, 2)
+}
+
+model Product {
+  id                    String   @id @default(cuid())
+  sku                   String   @unique
+  name                  String
+  category              String
+  unit                  String   @default("قطعة")
+  expectedPurchasePrice Decimal  @db.Decimal(12, 2)
+  expectedSalePrice     Decimal  @db.Decimal(12, 2)
+  stockQuantity         Decimal  @db.Decimal(12, 3)
+  minStockLevel         Decimal  @db.Decimal(12, 3)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  invoiceLines   InvoiceLine[]
+  stockMovements StockMovement[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  invoices Invoice[]
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  invoices Invoice[]
+}
+
+model Invoice {
+  id               String         @id @default(cuid())
+  invoiceNumber    String
+  type             InvoiceType
+  date             DateTime
+  customerId       String?
+  supplierId       String?
+  status           InvoiceStatus  @default(DRAFT)
+  paymentStatus    PaymentStatus  @default(UNPAID)
+  paymentMethod    PaymentMethod?
+  discountStated   Decimal        @db.Decimal(12, 2)
+  taxStated        Decimal        @db.Decimal(12, 2)
+  subtotalStated   Decimal        @db.Decimal(12, 2)
+  totalStated      Decimal        @db.Decimal(12, 2)
+  discountComputed Decimal        @db.Decimal(12, 2)
+  taxComputed      Decimal        @db.Decimal(12, 2)
+  subtotalComputed Decimal        @db.Decimal(12, 2)
+  totalComputed    Decimal        @db.Decimal(12, 2)
+  notes            String?
+  source           InvoiceSource  @default(MANUAL)
+  originalFileUrl  String?
+  safetyScore      Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  approvedAt       DateTime?
+
+  customer       Customer?          @relation(fields: [customerId], references: [id])
+  supplier       Supplier?          @relation(fields: [supplierId], references: [id])
+  lines          InvoiceLine[]
+  auditResults   InvoiceAudit[]
+  aiReview       InvoiceAiReview?
+  stockMovements StockMovement[]
+  cashMovements  CashMovement[]
+
+  @@index([invoiceNumber])
+  @@index([type, date])
+  @@index([status])
+  @@index([supplierId, date, invoiceNumber])
+}
+
+model InvoiceLine {
+  id                String  @id @default(cuid())
+  invoiceId         String
+  productId         String?
+  productName       String
+  quantity          Decimal @db.Decimal(12, 3)
+  unitPrice         Decimal @db.Decimal(12, 2)
+  discount          Decimal @db.Decimal(12, 2)
+  tax               Decimal @db.Decimal(12, 2)
+  lineTotalStated   Decimal @db.Decimal(12, 2)
+  lineTotalComputed Decimal @db.Decimal(12, 2)
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model InvoiceAudit {
+  id            String         @id @default(cuid())
+  invoiceId     String
+  type          AuditIssueType
+  severity      AuditSeverity
+  field         String?
+  lineId        String?
+  invoiceValue  Decimal?       @db.Decimal(12, 2)
+  expectedValue Decimal?       @db.Decimal(12, 2)
+  message       String
+  createdAt     DateTime       @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model InvoiceAiReview {
+  id             String @id @default(cuid())
+  invoiceId      String @unique
+  summary        String
+  recommendation String
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model StockMovement {
+  id           String            @id @default(cuid())
+  date         DateTime
+  productId    String
+  type         StockMovementType
+  invoiceId    String?
+  quantityIn   Decimal           @db.Decimal(12, 3)
+  quantityOut  Decimal           @db.Decimal(12, 3)
+  balanceAfter Decimal           @db.Decimal(12, 3)
+  notes        String?
+
+  product Product  @relation(fields: [productId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([productId, date])
+}
+
+model CashMovement {
+  id            String           @id @default(cuid())
+  date          DateTime
+  type          CashMovementType
+  amount        Decimal          @db.Decimal(12, 2)
+  invoiceId     String?
+  description   String
+  paymentMethod PaymentMethod    @default(CASH)
+
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([date])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  date        DateTime
+  amount      Decimal  @db.Decimal(12, 2)
+  category    String
+  description String
+}
+
+model AiInsight {
+  id              String            @id @default(cuid())
+  observation     String
+  importance      InsightImportance
+  explanation     String
+  suggestedAction String
+  createdAt       DateTime          @default(now())
+}
