@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ar } from "../locales/ar";
 
 const groups = [
@@ -30,8 +31,35 @@ const groups = [
 ];
 
 export function AppLayout() {
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.classList.toggle("menu-open", menuOpen);
+    return () => document.body.classList.remove("menu-open");
+  }, [menuOpen]);
+
   return (
-    <div className="app-shell">
+    <div className={menuOpen ? "app-shell is-menu-open" : "app-shell"}>
+      <header className="topbar">
+        <button type="button" className="menu-button" onClick={() => setMenuOpen(true)}>
+          <MenuIcon />
+          <span>{ar.layout.openMenu}</span>
+        </button>
+        <div className="brand-row">
+          <span className="brand-mark">{ar.layout.shortName[0]}</span>
+          <p className="topbar-title">{ar.appName}</p>
+        </div>
+      </header>
+
+      <button type="button" className="sidebar-backdrop" onClick={() => setMenuOpen(false)}>
+        {ar.layout.closeMenu}
+      </button>
+
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-row">
@@ -40,6 +68,9 @@ export function AppLayout() {
               <p className="brand-phase">{ar.phaseBadge}</p>
               <h1 className="brand-name">{ar.appName}</h1>
             </div>
+            <button type="button" className="sidebar-close" onClick={() => setMenuOpen(false)}>
+              {ar.layout.closeMenu}
+            </button>
           </div>
           <p className="sidebar-rule">{ar.layout.rule}</p>
         </div>
@@ -66,6 +97,14 @@ export function AppLayout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
   );
 }
 

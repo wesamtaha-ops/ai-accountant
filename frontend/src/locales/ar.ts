@@ -47,6 +47,8 @@ export const ar = {
   layout: {
     rule: "جيميناي يقرأ ويشرح. الأرقام من الخادم.",
     shortName: "جعفر",
+    openMenu: "فتح القائمة",
+    closeMenu: "إغلاق القائمة",
   },
   dashboard: {
     title: "لوحة التحكم",
